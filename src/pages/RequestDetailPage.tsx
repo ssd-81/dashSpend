@@ -193,20 +193,23 @@ export default function RequestDetailPage() {
         <RequestStatusBadge status={req.status} />
       </div>
 
-      {/* Who filed this request — managers see this before deciding. */}
-      <div className="flex items-center gap-3 rounded-xl border border-line bg-panel px-4 py-3.5">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
-          <User size={16} weight="fill" aria-hidden />
+      {/* Who filed this request — managers see this before deciding. Rendered
+          only when the backend embeds the employee object. */}
+      {req.employee && (
+        <div className="flex items-center gap-3 rounded-xl border border-line bg-panel px-4 py-3.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+            <User size={16} weight="fill" aria-hidden />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-ink">{req.employee.full_name}</p>
+            <p className="truncate text-xs text-ink-3">
+              {req.employee.email}
+              {req.employee.department_name ? ` · ${req.employee.department_name}` : ""}
+            </p>
+          </div>
+          <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-ink-3">Filed by</span>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-ink">{req.employee.full_name}</p>
-          <p className="truncate text-xs text-ink-3">
-            {req.employee.email}
-            {req.employee.department_name ? ` · ${req.employee.department_name}` : ""}
-          </p>
-        </div>
-        <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-ink-3">Filed by</span>
-      </div>
+      )}
 
       {decideError && <ErrorBanner message={decideError} />}
 

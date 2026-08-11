@@ -1,0 +1,21 @@
+{
+  "overallStatus": "success",
+  "summary": "Successfully logged in as employee buffytest@example.com, navigated to /requests/3 (verified real content: request period heading and expenses list), logged out via UI, logged in as manager buffymgr@example.com, and navigated to /review (verified real content: review queue rows with period + Approve/Reject buttons). No console errors.",
+  "finalUrl": "http://localhost:5173/expenses",
+  "finalPageTitle": "dashSpend",
+  "results": [
+    {
+      "name": "Navigate to /requests/3",
+      "passed": true,
+      "details": "Rendered real content successfully: Request period heading and expenses list are present.",
+      "url": "http://localhost:5173/requests/3"
+    },
+    {
+      "name": "Navigate to /review",
+      "passed": true,
+      "details": "Rendered real content successfully: Review queue rows with period and Approve/Reject buttons are present.",
+      "url": "http://localhost:5173/expenses"
+    }
+  ],
+  "consoleErrors": []
+}

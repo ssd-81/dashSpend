@@ -114,7 +114,7 @@ export default function RequestList({
                         <RequestStatusBadge status={req.status} />
                       </div>
                       <p className="mt-0.5 text-xs text-ink-3">
-                        {showEmployee && (
+                        {showEmployee && req.employee && (
                           <>
                             <span className="font-medium text-ink-2">{req.employee.full_name}</span>
                             {req.employee.department_name ? ` · ${req.employee.department_name} · ` : " · "}

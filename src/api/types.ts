@@ -106,8 +106,12 @@ export interface EmployeeOut {
 export interface ReimbursementRequestOut {
   id: number;
   employee_id: number;
-  /** Who filed the request (manager views show this to identify the submitter). */
-  employee: EmployeeOut;
+  /**
+   * Who filed the request (manager views show this to identify the submitter).
+   * The backend embeds it on every request payload, but it is kept optional so
+   * an older backend without the field cannot crash rendering.
+   */
+  employee?: EmployeeOut;
   period: string;
   status: RequestStatus;
   submitted_at: string;
