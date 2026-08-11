@@ -42,7 +42,7 @@ export default function ApprovedPage() {
           />
         </div>
       </div>
-      <RequestList loader={loader} emptyTitle="Nothing approved here yet" emptyBody={emptyBody} />
+      <RequestList loader={loader} emptyTitle="Nothing approved here yet" emptyBody={emptyBody} showEmployee />
     </div>
   );
 }

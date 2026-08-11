@@ -289,6 +289,13 @@ snapshotted onto each, and the request becomes `pending`. → 201
 {
   "id": 4,
   "employee_id": 1,
+  "employee": {
+    "id": 1,
+    "email": "employee@example.com",
+    "full_name": "Erin Employee",
+    "department_id": 1,
+    "department_name": "Engineering"
+  },
   "period": "2025-06",
   "status": "pending",
   "submitted_at": "2025-06-10T11:02:00+00:00",
@@ -301,6 +308,12 @@ snapshotted onto each, and the request becomes `pending`. → 201
   ]
 }
 ```
+
+`employee` is a nested summary of who filed the request (id, email, full_name,
+department_id, department_name) and is embedded on **every** request payload
+— submit, detail, list, decision, and the approved archive. Manager screens
+use it to identify the submitter; it is additive to `employee_id` and all
+other fields serialize exactly as before.
 
 **Fails with 409** if the employee already has a `pending` request for that
 period (UI: disable the submit button when one exists — see §7). **Fails with

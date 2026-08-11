@@ -60,9 +60,10 @@ Demo accounts (seeded by `seed.py`, password `password123`):
 
 ## Known API gaps the UI works around
 
-- `ReimbursementRequestOut` does not include the employee's name, so manager
-  screens identify requests by period/date only. If reviewer identity
-  matters, the backend should add `employee_name` to that schema.
+- Every `ReimbursementRequestOut` payload now embeds an `employee` object
+  (id, email, full_name, department_id, department_name), so manager screens
+  show who filed each request in the review queue, approved archive, and on
+  the detail page.
 - There is no way to delete an expense for managers, so the delete affordance
   is hidden for that role on the expense modal.
 - The backend has no `GET /reimbursement-requests/{id}/audit` route (only

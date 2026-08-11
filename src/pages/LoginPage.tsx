@@ -1,28 +1,68 @@
-import { useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Lock, SignIn } from "@phosphor-icons/react";
+import { Lock, SignIn, UserPlus, WarningCircle } from "@phosphor-icons/react";
 import { useSession } from "../store/session";
 import { ApiError } from "../api/client";
-import { Field, Input, Button, ErrorBanner } from "../components/ui";
+import { listDepartments } from "../api/endpoints";
+import type { DepartmentOut, Role } from "../api/types";
+import { Field, Input, Button, ErrorBanner, Select } from "../components/ui";
 
-const DEMO_ACCOUNTS = [
-  { email: "employee@example.com", label: "Employee" },
-  { email: "manager@example.com", label: "Manager" },
-  { email: "finemployee@example.com", label: "Finance employee" },
-  { email: "finmanager@example.com", label: "Finance manager" },
-];
+type Mode = "signin" | "signup";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginPage() {
-  const { login } = useSession();
+  const { login, register } = useSession();
   const [searchParams] = useSearchParams();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [mode, setMode] = useState<Mode>("signin");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // Sign-in fields
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  // Sign-up fields
+  const [fullName, setFullName] = useState("");
+  const [signupEmail, setSignupEmail] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
+  const [role, setRole] = useState<Role>("employee");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // Departments for the sign-up dropdown (public endpoint, no auth needed).
+  const [departments, setDepartments] = useState<DepartmentOut[]>([]);
+  const [deptError, setDeptError] = useState<string | null>(null);
+
+  const loadDepartments = useCallback(async () => {
+    setDeptError(null);
+    try {
+      setDepartments(await listDepartments());
+    } catch (err) {
+      setDeptError(err instanceof ApiError ? err.message : "Could not load departments.");
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDepartments();
+  }, [loadDepartments]);
+
   const sessionExpired = searchParams.get("reason") === "session";
 
-  const submit = async (e: FormEvent) => {
+  const deptPlaceholder = deptError
+    ? "Departments unavailable"
+    : departments.length
+      ? "Choose a department…"
+      : "Loading departments…";
+
+  const switchMode = (next: Mode) => {
+    setMode(next);
+    setError(null);
+    setFieldErrors({});
+    setBusy(false);
+  };
+
+  const submitSignin = async (e: FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password) {
       setError("Enter your email and password.");
@@ -42,6 +82,47 @@ export default function LoginPage() {
     }
   };
 
+  const submitSignup = async (e: FormEvent) => {
+    e.preventDefault();
+    const errors: Record<string, string> = {};
+    if (!fullName.trim()) errors.full_name = "Enter your full name.";
+    if (!EMAIL_RE.test(signupEmail.trim())) errors.email = "Enter a valid email address.";
+    if (signupPassword.length < 8) errors.password = "Use at least 8 characters.";
+    if (!departmentId) errors.department_id = "Choose a department.";
+    setFieldErrors(errors);
+    if (Object.keys(errors).length) return;
+
+    setBusy(true);
+    setError(null);
+    try {
+      await register({
+        email: signupEmail.trim(),
+        password: signupPassword,
+        full_name: fullName.trim(),
+        department_id: Number(departmentId),
+        role,
+      });
+      // Registration auto-signs-in; the router redirects into the app.
+    } catch (err) {
+      setBusy(false);
+      if (err instanceof ApiError) {
+        // 422 validation errors map to individual fields (e.g. password too
+        // short, unknown department). Everything else goes to the banner.
+        if (err.fieldErrors) setFieldErrors(err.fieldErrors);
+        else setError(err.message);
+      } else {
+        setError("Could not create your account. Check that the backend is running.");
+      }
+    }
+  };
+
+  const tabClass = (active: boolean) =>
+    `flex items-center justify-center gap-1.5 rounded-[8px] px-3 py-2 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring ${
+      active
+        ? "bg-panel text-ink shadow-sm ring-1 ring-line"
+        : "text-ink-2 hover:text-ink"
+    }`;
+
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-surface px-4 py-10">
       <div className="w-full max-w-sm">
@@ -55,67 +136,163 @@ export default function LoginPage() {
           </svg>
           <div className="text-center">
             <h1 className="text-lg font-semibold tracking-tight text-ink">dashSpend</h1>
-            <p className="mt-0.5 text-sm text-ink-3">Sign in to submit and review expenses.</p>
+            <p className="mt-0.5 text-sm text-ink-3">Submit expenses, get reimbursed.</p>
           </div>
         </div>
 
-        {sessionExpired && (
+        {sessionExpired && mode === "signin" && (
           <div className="mb-4">
             <ErrorBanner message="Your session expired. Sign in again to continue." />
           </div>
         )}
 
-        <form onSubmit={submit} className="flex flex-col gap-4 rounded-xl border border-line bg-panel p-5 shadow-sm shadow-black/[0.03]">
-          {error && <ErrorBanner message={error} />}
-          <Field label="Email" htmlFor="login-email">
-            <Input
-              id="login-email"
-              type="email"
-              autoComplete="username"
-              placeholder="you@company.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </Field>
-          <Field label="Password" htmlFor="login-password">
-            <Input
-              id="login-password"
-              type="password"
-              autoComplete="current-password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </Field>
-          <Button variant="primary" type="submit" loading={busy} icon={<Lock size={15} />} className="mt-1">
-            Sign in
-          </Button>
-        </form>
+        <div className="rounded-xl border border-line bg-panel p-5 shadow-sm shadow-black/[0.03]">
+          <div
+            className="mb-5 grid grid-cols-2 gap-1 rounded-[10px] bg-panel-2 p-1"
+            aria-label="Account access"
+          >
+            <button
+              type="button"
+              aria-pressed={mode === "signin"}
+              onClick={() => switchMode("signin")}
+              className={tabClass(mode === "signin")}
+            >
+              <SignIn size={15} aria-hidden />
+              Sign in
+            </button>
+            <button
+              type="button"
+              aria-pressed={mode === "signup"}
+              onClick={() => switchMode("signup")}
+              className={tabClass(mode === "signup")}
+            >
+              <UserPlus size={15} aria-hidden />
+              Create account
+            </button>
+          </div>
 
-        <div className="mt-5 rounded-xl border border-line bg-panel px-4 py-3.5">
-          <p className="flex items-center gap-1.5 text-xs font-medium text-ink-2">
-            <SignIn size={13} aria-hidden />
-            Demo accounts
-          </p>
-          <ul className="mt-2 space-y-1.5">
-            {DEMO_ACCOUNTS.map((a) => (
-              <li key={a.email}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmail(a.email);
-                    setPassword("password123");
-                    setError(null);
-                  }}
-                  className="group flex w-full items-center justify-between rounded-[8px] px-1.5 py-1 text-left text-xs transition-colors hover:bg-hover"
+          {mode === "signin" ? (
+            <form onSubmit={submitSignin} className="flex flex-col gap-4">
+              {error && <ErrorBanner message={error} />}
+              <Field label="Email" htmlFor="login-email">
+                <Input
+                  id="login-email"
+                  type="email"
+                  autoComplete="username"
+                  placeholder="you@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </Field>
+              <Field label="Password" htmlFor="login-password">
+                <Input
+                  id="login-password"
+                  type="password"
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </Field>
+              <Button variant="primary" type="submit" loading={busy} icon={<Lock size={15} />} className="mt-1">
+                Sign in
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={submitSignup} className="flex flex-col gap-4">
+              {error && <ErrorBanner message={error} />}
+              <Field label="Full name" htmlFor="signup-full-name" error={fieldErrors.full_name}>
+                <Input
+                  id="signup-full-name"
+                  autoComplete="name"
+                  placeholder="Ada Lovelace"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                />
+              </Field>
+              <Field label="Email" htmlFor="signup-email" error={fieldErrors.email}>
+                <Input
+                  id="signup-email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="you@company.com"
+                  value={signupEmail}
+                  onChange={(e) => setSignupEmail(e.target.value)}
+                />
+              </Field>
+              <Field
+                label="Password"
+                htmlFor="signup-password"
+                hint="At least 8 characters."
+                error={fieldErrors.password}
+              >
+                <Input
+                  id="signup-password"
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="••••••••"
+                  value={signupPassword}
+                  onChange={(e) => setSignupPassword(e.target.value)}
+                />
+              </Field>
+              <Field label="Department" htmlFor="signup-department" error={fieldErrors.department_id}>
+                <Select
+                  id="signup-department"
+                  value={departmentId}
+                  onChange={(e) => setDepartmentId(e.target.value)}
+                  disabled={deptError !== null}
                 >
-                  <span className="text-ink-3 group-hover:text-ink">{a.label}</span>
-                  <span className="font-mono text-[11px] text-ink-3">{a.email}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2 px-1.5 text-[11px] text-ink-3">Password for all demo accounts: password123</p>
+                  <option value="">{deptPlaceholder}</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </Select>
+                {deptError && (
+                  <p className="flex items-center gap-1 text-xs font-medium text-bad">
+                    <WarningCircle size={13} weight="fill" aria-hidden />
+                    {deptError}
+                    <button
+                      type="button"
+                      onClick={loadDepartments}
+                      className="font-semibold underline underline-offset-2 hover:opacity-80"
+                    >
+                      Retry
+                    </button>
+                  </p>
+                )}
+              </Field>
+              <Field label="Role" hint="You can pick either role for now.">
+                <div className="grid grid-cols-2 gap-2">
+                  {(["employee", "manager"] as const).map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setRole(r)}
+                      aria-pressed={role === r}
+                      className={`rounded-[10px] border px-3 py-2.5 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring ${
+                        role === r
+                          ? "border-accent bg-accent-soft ring-2 ring-accent-ring"
+                          : "border-line-2 bg-panel hover:bg-hover"
+                      }`}
+                    >
+                      <p className="text-[13px] font-medium text-ink">
+                        {r === "manager" ? "Manager" : "Employee"}
+                      </p>
+                      <p className="mt-0.5 text-[11px] leading-snug text-ink-3">
+                        {r === "manager" ? "Review & approve requests" : "Submit expenses & requests"}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </Field>
+              <Button variant="primary" type="submit" loading={busy} icon={<UserPlus size={15} />} className="mt-1">
+                Create account
+              </Button>
+              <p className="text-center text-xs text-ink-3">You'll be signed in automatically.</p>
+            </form>
+          )}
         </div>
       </div>
     </div>

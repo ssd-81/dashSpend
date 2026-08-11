@@ -2,11 +2,13 @@
 import { qs, request } from "./client";
 import type {
   AuditEventOut,
+  DepartmentOut,
   ExpenseCreate,
   ExpenseOut,
   FxRateOut,
   Page,
   ReceiptOut,
+  RegisterIn,
   ReimbursementRequestOut,
   SummaryOut,
   TokenResponse,
@@ -18,6 +20,14 @@ import type {
 export function login(username: string, password: string): Promise<TokenResponse> {
   const form = new URLSearchParams({ username, password });
   return request<TokenResponse>("/auth/token", { method: "POST", form, auth: false });
+}
+
+export function register(body: RegisterIn): Promise<UserOut> {
+  return request<UserOut>("/auth/register", { method: "POST", json: body, auth: false });
+}
+
+export function listDepartments(): Promise<DepartmentOut[]> {
+  return request<DepartmentOut[]>("/departments", { auth: false });
 }
 
 export function fetchMe(): Promise<UserOut> {

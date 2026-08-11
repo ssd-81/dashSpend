@@ -26,6 +26,7 @@ export default function ReviewPage() {
         emptyTitle="Queue is clear"
         emptyBody="No pending requests right now. New submissions from your department appear here."
         showActions
+        showEmployee
       />
     </div>
   );

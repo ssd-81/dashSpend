@@ -7,15 +7,17 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { clearSession, setToken } from "../api/client";
-import { fetchMe, login as apiLogin } from "../api/endpoints";
-import type { UserOut } from "../api/types";
+import { ApiError, clearSession, setToken } from "../api/client";
+import { fetchMe, login as apiLogin, register as apiRegister } from "../api/endpoints";
+import type { RegisterIn, UserOut } from "../api/types";
 
 interface SessionState {
   user: UserOut | null;
   /** true while the stored token is being validated against /users/me */
   booting: boolean;
   login: (email: string, password: string) => Promise<void>;
+  /** Create an account, then sign in with the fresh credentials. */
+  register: (body: RegisterIn) => Promise<void>;
   logout: () => void;
 }
 
@@ -48,13 +50,32 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setUser(me);
   }, []);
 
+  const register = useCallback(async (body: RegisterIn) => {
+    // /auth/register does not issue a token, so sign in right after.
+    await apiRegister(body);
+    try {
+      const res = await apiLogin(body.email, body.password);
+      setToken(res.access_token);
+      const me = await fetchMe();
+      setUser(me);
+    } catch {
+      // The account exists even if auto-login fails — don't let the caller
+      // present this as a failed registration (which would suggest a 409
+      // retry). Nudge the user toward signing in instead.
+      throw new ApiError(0, "account_created", "Your account was created. Sign in to continue.");
+    }
+  }, []);
+
   const logout = useCallback(() => {
     clearSession();
     setUser(null);
     window.location.assign("/login");
   }, []);
 
-  const value = useMemo(() => ({ user, booting, login, logout }), [user, booting, login, logout]);
+  const value = useMemo(
+    () => ({ user, booting, login, register, logout }),
+    [user, booting, login, register, logout],
+  );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

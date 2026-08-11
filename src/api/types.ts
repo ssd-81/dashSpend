@@ -18,6 +18,19 @@ export interface UserOut {
   department_name: string | null;
 }
 
+export interface DepartmentOut {
+  id: number;
+  name: string;
+}
+
+export interface RegisterIn {
+  email: string;
+  password: string;
+  full_name: string;
+  department_id: number;
+  role: Role;
+}
+
 export interface ReceiptOut {
   id: number;
   filename: string;
@@ -81,9 +94,20 @@ export interface RequestExpense {
   receipts: ReceiptBrief[];
 }
 
+/** Nested employee summary embedded in every reimbursement request payload. */
+export interface EmployeeOut {
+  id: number;
+  email: string;
+  full_name: string;
+  department_id: number;
+  department_name: string | null;
+}
+
 export interface ReimbursementRequestOut {
   id: number;
   employee_id: number;
+  /** Who filed the request (manager views show this to identify the submitter). */
+  employee: EmployeeOut;
   period: string;
   status: RequestStatus;
   submitted_at: string;

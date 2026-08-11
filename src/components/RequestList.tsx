@@ -20,12 +20,15 @@ export default function RequestList({
   emptyTitle,
   emptyBody,
   showActions = false,
+  showEmployee = false,
 }: {
   loader: (page: number) => Promise<Page<ReimbursementRequestOut>>;
   emptyTitle: string;
   emptyBody?: string;
   /** Render inline Approve/Reject actions on pending rows (review queue). */
   showActions?: boolean;
+  /** Prepend the filing employee's name to each row (manager views). */
+  showEmployee?: boolean;
 }) {
   const navigate = useNavigate();
   const [items, setItems] = useState<ReimbursementRequestOut[]>([]);
@@ -111,6 +114,12 @@ export default function RequestList({
                         <RequestStatusBadge status={req.status} />
                       </div>
                       <p className="mt-0.5 text-xs text-ink-3">
+                        {showEmployee && (
+                          <>
+                            <span className="font-medium text-ink-2">{req.employee.full_name}</span>
+                            {req.employee.department_name ? ` · ${req.employee.department_name} · ` : " · "}
+                          </>
+                        )}
                         {n} {n === 1 ? "expense" : "expenses"} · submitted {formatDateTime(req.submitted_at)}
                       </p>
                       {req.status === "rejected" && req.decision_comment && (
